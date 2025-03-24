@@ -1,89 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>To-Do List</h1>
-    <ul id="todo-list"></ul>
-    <form id="todo-form">
-        <input type="text" id="title" placeholder="Title" required>
-        <input type="text" id="description" placeholder="Description" required>
-        <button type="submit">Add To-Do</button>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-xl">
+    <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">📋 To-Do List</h1>
+
+    <form id="todo-form" class="flex flex-col sm:flex-row gap-3 mb-6">
+      <input
+        type="text"
+        id="title"
+        placeholder="Title"
+        required
+        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      />
+      <input
+        type="text"
+        id="description"
+        placeholder="Description"
+        required
+        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      />
+      <button
+        type="submit"
+        class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md"
+      >
+        Add
+      </button>
     </form>
-    <script>
-        async function fetchTodos() {
-            const response = await fetch('/todos');
-            const todos = await response.json();
-            const todoList = document.getElementById('todo-list');
-            todoList.innerHTML = '';
-            todos.forEach(todo => {
-                const li = document.createElement('li');
-                li.textContent = `${todo.title}: ${todo.description} `;
-                
-                // Create Edit button
-                const editButton = document.createElement('button');
-                editButton.textContent = 'Edit';
-                editButton.addEventListener('click', () => editTodo(todo));
-                li.appendChild(editButton);
 
-                // Create Delete button
-                const deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Delete';
-                deleteButton.addEventListener('click', () => deleteTodo(todo.id));
-                li.appendChild(deleteButton);
+    <ul id="todo-list" class="space-y-4"></ul>
+  </div>
 
-                todoList.appendChild(li);
-            });
-        }
+  <script>
+    async function fetchTodos() {
+      const response = await fetch('/todos');
+      const todos = await response.json();
+      const todoList = document.getElementById('todo-list');
+      todoList.innerHTML = '';
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.className = "bg-gray-50 p-4 rounded-md shadow-sm flex justify-between items-center";
 
-        async function editTodo(todo) {
-            const newTitle = prompt("Edit title", todo.title);
-            const newDescription = prompt("Edit description", todo.description);
+        const text = document.createElement('div');
+        text.innerHTML = `<strong>${todo.title}</strong><br/><span class="text-gray-600 text-sm">${todo.description}</span>`;
+        li.appendChild(text);
 
-            if (newTitle && newDescription) {
-                const response = await fetch(`/todos/${todo.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ ...todo, title: newTitle, description: newDescription })
-                });
+        const actions = document.createElement('div');
+        actions.className = "flex gap-2";
 
-                if (response.ok) {
-                    fetchTodos();
-                }
-            }
-        }
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
+        editButton.addEventListener('click', () => editTodo(todo));
+        actions.appendChild(editButton);
 
-        async function deleteTodo(id) {
-            const response = await fetch(`/todos/${id}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                fetchTodos();
-            }
-        }
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
+        deleteButton.addEventListener('click', () => deleteTodo(todo.id));
+        actions.appendChild(deleteButton);
 
-        document.getElementById('todo-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const title = document.getElementById('title').value;
-            const description = document.getElementById('description').value;
-            const response = await fetch('/todos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: Date.now(), title, description, completed: false })
-            });
-            if (response.ok) {
-                fetchTodos();
-            }
+        li.appendChild(actions);
+        todoList.appendChild(li);
+      });
+    }
+
+    async function editTodo(todo) {
+      const newTitle = prompt("Edit title", todo.title);
+      const newDescription = prompt("Edit description", todo.description);
+      if (newTitle && newDescription) {
+        const response = await fetch(`/todos/${todo.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ...todo, title: newTitle, description: newDescription })
         });
+        if (response.ok) {
+          fetchTodos();
+        }
+      }
+    }
 
+    async function deleteTodo(id) {
+      const response = await fetch(`/todos/${id}`, { method: 'DELETE' });
+      if (response.ok) {
         fetchTodos();
-    </script>
+      }
+    }
+
+    document.getElementById('todo-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const response = await fetch('/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Date.now(), title, description, completed: false })
+      });
+      if (response.ok) {
+        document.getElementById('title').value = '';
+        document.getElementById('description').value = '';
+        fetchTodos();
+      }
+    });
+
+    fetchTodos();
+  </script>
 </body>
 </html>
