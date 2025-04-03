@@ -36,7 +36,37 @@
     <ul id="todo-list" class="space-y-4"></ul>
   </div>
 
+  <!-- ✨ Edit Modal -->
+  <div id="edit-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+    <div class="bg-white p-6 rounded-xl w-full max-w-md">
+      <h2 class="text-xl font-bold mb-4 text-gray-700">Edit To-Do</h2>
+      <form id="edit-form" class="space-y-4">
+        <input type="text" id="edit-title" class="w-full px-4 py-2 border rounded-md" required />
+        <input type="text" id="edit-description" class="w-full px-4 py-2 border rounded-md" required />
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancel-edit" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    let currentEditId = null;
+    let currentEditCompleted = false;
+
+    function openEditModal(todo) {
+      currentEditId = todo.id;
+      document.getElementById('edit-title').value = todo.title;
+      document.getElementById('edit-description').value = todo.description;
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      currentEditId = null;
+      document.getElementById('edit-modal').classList.add('hidden');
+    }
+
     async function fetchTodos() {
       const response = await fetch('/todos');
       const todos = await response.json();
@@ -70,22 +100,30 @@
       });
     }
 
-    async function editTodo(todo) {
-      const newTitle = prompt("Edit title", todo.title);
-      const newDescription = prompt("Edit description", todo.description);
-      if (newTitle && newDescription) {
-        const response = await fetch(`/todos/${todo.id}`, {
+    function editTodo(todo) {
+      openEditModal(todo);
+    }
+
+    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newTitle = document.getElementById('edit-title').value.trim();
+      const newDescription = document.getElementById('edit-description').value.trim();
+
+      if (newTitle && newDescription && currentEditId !== null) {
+        const response = await fetch(`/todos/${currentEditId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ ...todo, title: newTitle, description: newDescription })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentEditId, title: newTitle, description: newDescription, completed: currentEditCompleted })
         });
+
         if (response.ok) {
+          closeEditModal();
           fetchTodos();
         }
       }
-    }
+    });
+
+    document.getElementById('cancel-edit').addEventListener('click', closeEditModal);
 
     async function deleteTodo(id) {
       const response = await fetch(`/todos/${id}`, { method: 'DELETE' });
@@ -114,3 +152,4 @@
   </script>
 </body>
 </html>
+
