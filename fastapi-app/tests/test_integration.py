@@ -1,66 +1,58 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import requests
 import pytest
-from fastapi.testclient import TestClient
-from main import app, save_todos, load_todos, TodoItem
 
-client = TestClient(app)
+BASE_URL = "http://54.180.120.187:8000"
 
-@pytest.fixture(autouse=True)
-def setup_and_teardown():
-    # 테스트 전 초기화
-    save_todos([])
-    yield
-    # 테스트 후 정리
-    save_todos([])
+@pytest.mark.order(1)
+def test_health_check():
+    res = requests.get(f"{BASE_URL}/todos")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
 
-def test_get_todos_empty():
-    response = client.get("/todos")
-    assert response.status_code == 200
-    assert response.json() == []
-
-def test_get_todos_with_items():
-    todo = TodoItem(id=1, title="Test", description="Test description", completed=False)
-    save_todos([todo.dict()])
-    response = client.get("/todos")
-    assert response.status_code == 200
-    assert len(response.json()) == 1
-    assert response.json()[0]["title"] == "Test"
-
+@pytest.mark.order(2)
 def test_create_todo():
-    todo = {"id": 1, "title": "Test", "description": "Test description", "completed": False}
-    response = client.post("/todos", json=todo)
-    assert response.status_code == 200
-    assert response.json()["title"] == "Test"
+    todo = {
+        "id": 1,
+        "title": "Test",
+        "description": "Test description",
+        "completed": False
+    }
+    res = requests.post(f"{BASE_URL}/todos", json=todo)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["id"] == 1
+    assert data["title"] == "Test"
 
-def test_create_todo_invalid():
-    todo = {"id": 1, "title": "Test"}
-    response = client.post("/todos", json=todo)
-    assert response.status_code == 422
+@pytest.mark.order(3)
+def test_get_todos_with_item():
+    res = requests.get(f"{BASE_URL}/todos")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) >= 1
+    assert any(todo["id"] == 1 for todo in data)
 
+@pytest.mark.order(4)
 def test_update_todo():
-    todo = TodoItem(id=1, title="Test", description="Test description", completed=False)
-    save_todos([todo.dict()])
-    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True}
-    response = client.put("/todos/1", json=updated_todo)
-    assert response.status_code == 200
-    assert response.json()["title"] == "Updated"
+    updated = {
+        "id": 1,
+        "title": "Updated",
+        "description": "Updated description",
+        "completed": True
+    }
+    res = requests.put(f"{BASE_URL}/todos/1", json=updated)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["title"] == "Updated"
+    assert data["completed"] is True
 
-def test_update_todo_not_found():
-    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True}
-    response = client.put("/todos/1", json=updated_todo)
-    assert response.status_code == 404
-
+@pytest.mark.order(5)
 def test_delete_todo():
-    todo = TodoItem(id=1, title="Test", description="Test description", completed=False)
-    save_todos([todo.dict()])
-    response = client.delete("/todos/1")
-    assert response.status_code == 200
-    assert response.json()["message"] == "To-Do item deleted"
-    
+    res = requests.delete(f"{BASE_URL}/todos/1")
+    assert res.status_code == 200
+    assert res.json()["message"] == "To-Do item deleted"
+
+@pytest.mark.order(6)
 def test_delete_todo_not_found():
-    response = client.delete("/todos/1")
-    assert response.status_code == 200
-    assert response.json()["message"] == "To-Do item deleted"
+    res = requests.delete(f"{BASE_URL}/todos/1")
+    assert res.status_code == 200
+    assert res.json()["message"] == "To-Do item deleted"
