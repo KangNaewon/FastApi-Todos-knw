@@ -67,6 +67,30 @@
       document.getElementById('edit-modal').classList.add('hidden');
     }
 
+    async function toggleCompleted(id, completed) {
+      // 현재 todos에서 해당 항목 찾기
+      const todos = await fetch('/todos').then(res => res.json());
+      const todo = todos.find(t => t.id === id);
+
+      if (!todo) return;
+
+      const updatedTodo = {
+        ...todo,
+        completed: completed
+      };
+
+      const response = await fetch(`/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTodo)
+      });
+
+      if (response.ok) {
+        fetchTodos();
+      }
+    }
+
+
     async function fetchTodos() {
       const response = await fetch('/todos');
       const todos = await response.json();
@@ -76,13 +100,21 @@
         const li = document.createElement('li');
         li.className = "bg-gray-50 p-4 rounded-md shadow-sm flex justify-between items-center";
 
+        // ✅ 체크박스
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.completed;
+        checkbox.className = 'mr-4 w-5 h-5 accent-indigo-500';
+        checkbox.addEventListener('change', () => toggleCompleted(todo.id, checkbox.checked));
+
         const text = document.createElement('div');
-        text.innerHTML = `<strong>${todo.title}</strong><br/><span class="text-gray-600 text-sm">${todo.description}</span>`;
-        li.appendChild(text);
+        text.innerHTML = `<strong ${todo.completed ? 'class="line-through text-gray-400"' : ''}>${todo.title}</strong><br/>
+        <span class="text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-600'}">${todo.description}</span>`;
 
         const actions = document.createElement('div');
         actions.className = "flex gap-2";
 
+        // 수정/삭제 버튼은 그대로
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
@@ -95,8 +127,12 @@
         deleteButton.addEventListener('click', () => deleteTodo(todo.id));
         actions.appendChild(deleteButton);
 
+        // li 구성
+        li.appendChild(checkbox); // ⬅ 체크박스 먼저
+        li.appendChild(text);
         li.appendChild(actions);
         todoList.appendChild(li);
+
       });
     }
 
