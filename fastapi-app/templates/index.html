@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>To-Do List</title>
-  <script src="https://cdn.tailwindcss.com" integrity="..." crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
   <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-xl">
@@ -93,14 +94,21 @@
 
     async function fetchTodos() {
       const response = await fetch('/todos');
-      const todos = await response.json();
+      let todos = await response.json();
+
+      // 저장된 순서 가져오기
+      const savedOrder = JSON.parse(localStorage.getItem('todo-order')) || [];
+      if (savedOrder.length) {
+        todos.sort((a, b) => savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id));
+      }
+
       const todoList = document.getElementById('todo-list');
       todoList.innerHTML = '';
       todos.forEach(todo => {
         const li = document.createElement('li');
+        li.setAttribute('data-id', todo.id); // ✅ 드래그용 ID
         li.className = "bg-gray-50 p-4 rounded-md shadow-sm flex justify-between items-center";
 
-        // ✅ 체크박스
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = todo.completed;
@@ -114,7 +122,6 @@
         const actions = document.createElement('div');
         actions.className = "flex gap-2";
 
-        // 수정/삭제 버튼은 그대로
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
@@ -127,14 +134,21 @@
         deleteButton.addEventListener('click', () => deleteTodo(todo.id));
         actions.appendChild(deleteButton);
 
-        // li 구성
-        li.appendChild(checkbox); // ⬅ 체크박스 먼저
+        li.appendChild(checkbox);
         li.appendChild(text);
         li.appendChild(actions);
         todoList.appendChild(li);
+      });
 
+      new Sortable(todoList, {
+        animation: 150,
+        onEnd: () => {
+          const ids = Array.from(todoList.children).map(li => parseInt(li.getAttribute('data-id')));
+          localStorage.setItem('todo-order', JSON.stringify(ids));
+        }
       });
     }
+
 
     function editTodo(todo) {
       openEditModal(todo);
