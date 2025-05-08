@@ -10,7 +10,6 @@ WORKDIR /app
 
 # 필요한 파일 복사
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 
