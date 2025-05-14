@@ -4,12 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>To-Do List</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} },
+      plugins: [],
+    }
+  </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
-  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-xl">
-    <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">📋 To-Do List</h1>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex items-center justify-center p-6">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 w-full max-w-xl">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-300">📋 To-Do List</h1>
+      <button id="toggle-theme" class="text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-3 py-1 rounded">
+        🌞 Light
+      </button>
+    </div>
 
     <form id="todo-form" class="flex flex-col sm:flex-row gap-3 mb-6">
       <input
@@ -17,14 +30,14 @@
         id="title"
         placeholder="Title"
         required
-        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
       />
       <input
         type="text"
         id="description"
         placeholder="Description"
         required
-        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
       />
       <button
         type="submit"
@@ -39,25 +52,42 @@
 
   <!-- ✨ Edit Modal -->
   <div id="edit-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
-    <div class="bg-white p-6 rounded-xl w-full max-w-md">
-      <h2 class="text-xl font-bold mb-4 text-gray-700">Edit To-Do</h2>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md">
+      <h2 class="text-xl font-bold mb-4 text-gray-700 dark:text-gray-100">Edit To-Do</h2>
       <form id="edit-form" class="space-y-4">
-        <input type="text" id="edit-title" class="w-full px-4 py-2 border rounded-md" required />
-        <input type="text" id="edit-description" class="w-full px-4 py-2 border rounded-md" required />
+        <input type="text" id="edit-title" class="w-full px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white" required />
+        <input type="text" id="edit-description" class="w-full px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white" required />
         <div class="flex justify-end gap-2">
-          <button type="button" id="cancel-edit" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
-          <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded">Save</button>
+          <button type="button" id="cancel-edit" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-black dark:text-white rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">Save</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
+    // 🌙 초기 테마 설정
+    const toggleBtn = document.getElementById('toggle-theme');
+    if (localStorage.theme === 'dark' && toggleBtn) {
+      document.documentElement.classList.add('dark');
+      toggleBtn.textContent = '🌙 Dark';
+    }
+
+    // 테마 토글
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.theme = isDark ? 'dark' : 'light';
+        toggleBtn.textContent = isDark ? '🌙 Dark' : '🌞 Light';
+      });
+    }
+
     let currentEditId = null;
     let currentEditCompleted = false;
 
     function openEditModal(todo) {
       currentEditId = todo.id;
+      currentEditCompleted = todo.completed;
       document.getElementById('edit-title').value = todo.title;
       document.getElementById('edit-description').value = todo.description;
       document.getElementById('edit-modal').classList.remove('hidden');
@@ -69,34 +99,24 @@
     }
 
     async function toggleCompleted(id, completed) {
-      // 현재 todos에서 해당 항목 찾기
       const todos = await fetch('/todos').then(res => res.json());
       const todo = todos.find(t => t.id === id);
-
       if (!todo) return;
 
-      const updatedTodo = {
-        ...todo,
-        completed: completed
-      };
-
+      const updatedTodo = { ...todo, completed };
       const response = await fetch(`/todos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedTodo)
       });
 
-      if (response.ok) {
-        fetchTodos();
-      }
+      if (response.ok) fetchTodos();
     }
-
 
     async function fetchTodos() {
       const response = await fetch('/todos');
       let todos = await response.json();
 
-      // 저장된 순서 가져오기
       const savedOrder = JSON.parse(localStorage.getItem('todo-order')) || [];
       if (savedOrder.length) {
         todos.sort((a, b) => savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id));
@@ -106,8 +126,8 @@
       todoList.innerHTML = '';
       todos.forEach(todo => {
         const li = document.createElement('li');
-        li.setAttribute('data-id', todo.id); // ✅ 드래그용 ID
-        li.className = "bg-gray-50 p-4 rounded-md shadow-sm flex justify-between items-center";
+        li.setAttribute('data-id', todo.id);
+        li.className = "bg-gray-50 dark:bg-gray-700 p-4 rounded-md shadow-sm flex justify-between items-center";
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -117,7 +137,7 @@
 
         const text = document.createElement('div');
         text.innerHTML = `<strong ${todo.completed ? 'class="line-through text-gray-400"' : ''}>${todo.title}</strong><br/>
-        <span class="text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-600'}">${todo.description}</span>`;
+        <span class="text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-300'}">${todo.description}</span>`;
 
         const actions = document.createElement('div');
         actions.className = "flex gap-2";
@@ -149,7 +169,6 @@
       });
     }
 
-
     function editTodo(todo) {
       openEditModal(todo);
     }
@@ -163,7 +182,12 @@
         const response = await fetch(`/todos/${currentEditId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: currentEditId, title: newTitle, description: newDescription, completed: currentEditCompleted })
+          body: JSON.stringify({
+            id: currentEditId,
+            title: newTitle,
+            description: newDescription,
+            completed: currentEditCompleted
+          })
         });
 
         if (response.ok) {
@@ -202,4 +226,3 @@
   </script>
 </body>
 </html>
-
