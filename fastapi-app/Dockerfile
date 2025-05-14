@@ -9,7 +9,7 @@ USER appuser
 WORKDIR /app
 
 # 필요한 파일 복사
-COPY requirements.txt ./
+COPY requirements.txt .
 COPY . .
 
 
