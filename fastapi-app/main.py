@@ -72,3 +72,7 @@ def read_root():
     with open("templates/index.html", "r") as file:
         content = file.read()
     return HTMLResponse(content=content)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
