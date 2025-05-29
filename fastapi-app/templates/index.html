@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>To-Do List</title>
   
+  <!-- Tailwind + SortableJS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script>
@@ -24,21 +25,27 @@
       </button>
     </div>
 
+    <!-- Add Form: priority select 추가 -->
     <form id="todo-form" class="flex flex-col sm:flex-row gap-3 mb-6">
       <input
         type="text"
         id="title"
         placeholder="Title"
         required
-        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
+        class="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
       />
       <input
         type="text"
         id="description"
         placeholder="Description"
         required
-        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
+        class="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:text-white"
       />
+      <select id="priority" class="min-w-0px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100">
+        <option value="low">Low Priority</option>
+        <option value="medium" selected>Medium Priority</option>
+        <option value="high">High Priority</option>
+      </select>
       <button
         type="submit"
         class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md"
@@ -50,13 +57,18 @@
     <ul id="todo-list" class="space-y-4"></ul>
   </div>
 
-  <!-- ✨ Edit Modal -->
+  <!-- Edit Modal: priority select 추가 -->
   <div id="edit-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md">
       <h2 class="text-xl font-bold mb-4 text-gray-700 dark:text-gray-100">Edit To-Do</h2>
       <form id="edit-form" class="space-y-4">
         <input type="text" id="edit-title" class="w-full px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white" required />
         <input type="text" id="edit-description" class="w-full px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white" required />
+        <select id="edit-priority" class="w-full px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white">
+          <option value="low">Low Priority</option>
+          <option value="medium">Medium Priority</option>
+          <option value="high">High Priority</option>
+        </select>
         <div class="flex justify-end gap-2">
           <button type="button" id="cancel-edit" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-black dark:text-white rounded">Cancel</button>
           <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">Save</button>
@@ -66,14 +78,12 @@
   </div>
 
   <script>
-    // 🌙 초기 테마 설정
+    // 테마 토글 준비
     const toggleBtn = document.getElementById('toggle-theme');
     if (localStorage.theme === 'dark' && toggleBtn) {
       document.documentElement.classList.add('dark');
       toggleBtn.textContent = '🌙 Dark';
     }
-
-    // 테마 토글
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => {
         const isDark = document.documentElement.classList.toggle('dark');
@@ -90,138 +100,137 @@
       currentEditCompleted = todo.completed;
       document.getElementById('edit-title').value = todo.title;
       document.getElementById('edit-description').value = todo.description;
+      document.getElementById('edit-priority').value = todo.priority;
       document.getElementById('edit-modal').classList.remove('hidden');
     }
-
     function closeEditModal() {
       currentEditId = null;
       document.getElementById('edit-modal').classList.add('hidden');
     }
 
     async function toggleCompleted(id, completed) {
-      const todos = await fetch('/todos').then(res => res.json());
-      const todo = todos.find(t => t.id === id);
+      const todos = await fetch('/todos').then(r=>r.json());
+      const todo = todos.find(t=>t.id===id);
       if (!todo) return;
-
-      const updatedTodo = { ...todo, completed };
-      const response = await fetch(`/todos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedTodo)
+      const updated = { ...todo, completed };
+      await fetch(`/todos/${id}`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(updated)
       });
-
-      if (response.ok) fetchTodos();
+      fetchTodos();
     }
 
     async function fetchTodos() {
-      const response = await fetch('/todos');
-      let todos = await response.json();
+      const res = await fetch('/todos');
+      let todos = await res.json();
 
-      const savedOrder = JSON.parse(localStorage.getItem('todo-order')) || [];
-      if (savedOrder.length) {
-        todos.sort((a, b) => savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id));
-      }
+      // 드래그 저장 순서 반영
+      const order = JSON.parse(localStorage.getItem('todo-order'))||[];
+      if (order.length) todos.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
 
-      const todoList = document.getElementById('todo-list');
-      todoList.innerHTML = '';
+      const list = document.getElementById('todo-list');
+      list.innerHTML = '';
       todos.forEach(todo => {
         const li = document.createElement('li');
         li.setAttribute('data-id', todo.id);
         li.className = "bg-gray-50 dark:bg-gray-700 p-4 rounded-md shadow-sm flex justify-between items-center";
 
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = todo.completed;
-        checkbox.className = 'mr-4 w-5 h-5 accent-indigo-500';
-        checkbox.addEventListener('change', () => toggleCompleted(todo.id, checkbox.checked));
+        // priority badge
+        const badgeColors = {
+          low:    'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-200',
+          medium: 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200',
+          high:   'bg-red-200 text-red-800 dark:bg-red-700 dark:text-red-200'
+        };
+        const badge = document.createElement('span');
+        badge.textContent = todo.priority.toUpperCase();
+        badge.className = `px-2 py-1 text-xs font-semibold rounded ${badgeColors[todo.priority]}`;
 
+        // checkbox + text + badge
+        const left = document.createElement('div');
+        left.className = "flex items-center gap-3";
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.checked = todo.completed;
+        cb.className = 'w-5 h-5 accent-indigo-500';
+        cb.addEventListener('change', ()=> toggleCompleted(todo.id, cb.checked));
         const text = document.createElement('div');
-        text.innerHTML = `<strong ${todo.completed ? 'class="line-through text-gray-400"' : ''}>${todo.title}</strong><br/>
-        <span class="text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-300'}">${todo.description}</span>`;
+        text.innerHTML = `<strong ${todo.completed?'class="line-through text-gray-400 dark:text-gray-500"':''}>${todo.title}</strong><br/>
+                          <span class="text-sm ${todo.completed?'line-through text-gray-400 dark:text-gray-500':'text-gray-300'}">${todo.description}</span>`;
+        left.append(cb, text, badge);
 
-        const actions = document.createElement('div');
-        actions.className = "flex gap-2";
+        // buttons
+        const buttons = document.createElement('div');
+        buttons.className = "flex gap-2";
+        ['Edit','Delete'].forEach(btnText=>{
+          const btn = document.createElement('button');
+          btn.textContent = btnText;
+          btn.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
+          btn.addEventListener('click', ()=>{
+            if (btnText==='Edit') openEditModal(todo);
+            else fetch(`/todos/${todo.id}`,{method:'DELETE'}).then(()=>fetchTodos());
+          });
+          buttons.append(btn);
+        });
 
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Edit';
-        editButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
-        editButton.addEventListener('click', () => editTodo(todo));
-        actions.appendChild(editButton);
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded';
-        deleteButton.addEventListener('click', () => deleteTodo(todo.id));
-        actions.appendChild(deleteButton);
-
-        li.appendChild(checkbox);
-        li.appendChild(text);
-        li.appendChild(actions);
-        todoList.appendChild(li);
+        li.append(left, buttons);
+        list.append(li);
       });
 
-      new Sortable(todoList, {
+      new Sortable(list, {
         animation: 150,
-        onEnd: () => {
-          const ids = Array.from(todoList.children).map(li => parseInt(li.getAttribute('data-id')));
+        onEnd: ()=> {
+          const ids = Array.from(list.children).map(li=>parseInt(li.dataset.id));
           localStorage.setItem('todo-order', JSON.stringify(ids));
         }
       });
     }
 
-    function editTodo(todo) {
-      openEditModal(todo);
-    }
-
-    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    // Add form submit
+    document.getElementById('todo-form').addEventListener('submit', async e=>{
       e.preventDefault();
-      const newTitle = document.getElementById('edit-title').value.trim();
-      const newDescription = document.getElementById('edit-description').value.trim();
-
-      if (newTitle && newDescription && currentEditId !== null) {
-        const response = await fetch(`/todos/${currentEditId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: currentEditId,
-            title: newTitle,
-            description: newDescription,
-            completed: currentEditCompleted
-          })
-        });
-
-        if (response.ok) {
-          closeEditModal();
-          fetchTodos();
-        }
-      }
+      const title = e.target.title.value.trim();
+      const desc  = e.target.description.value.trim();
+      const prio  = e.target.priority.value;
+      if (!title||!desc) return;
+      await fetch('/todos', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          id: Date.now(),
+          title, description:desc,
+          completed:false,
+          priority: prio
+        })
+      });
+      e.target.reset();
+      fetchTodos();
     });
 
+    // Edit form submit
+    document.getElementById('edit-form').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const title = e.target['edit-title'].value.trim();
+      const desc  = e.target['edit-description'].value.trim();
+      const prio  = e.target['edit-priority'].value;
+      if (!title||!desc||currentEditId===null) return;
+      await fetch(`/todos/${currentEditId}`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          id: currentEditId,
+          title, description:desc,
+          completed: currentEditCompleted,
+          priority: prio
+        })
+      });
+      closeEditModal();
+      fetchTodos();
+    });
+
+    // Cancel edit
     document.getElementById('cancel-edit').addEventListener('click', closeEditModal);
 
-    async function deleteTodo(id) {
-      const response = await fetch(`/todos/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchTodos();
-      }
-    }
-
-    document.getElementById('todo-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const title = document.getElementById('title').value;
-      const description = document.getElementById('description').value;
-      const response = await fetch('/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: Date.now(), title, description, completed: false })
-      });
-      if (response.ok) {
-        document.getElementById('title').value = '';
-        document.getElementById('description').value = '';
-        fetchTodos();
-      }
-    });
-
+    // 초기 로드
     fetchTodos();
   </script>
 </body>
