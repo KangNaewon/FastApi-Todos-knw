@@ -6,9 +6,9 @@ ENV JMETER_VERSION=5.4.1
 ENV JMETER_HOME=/opt/apache-jmeter-${JMETER_VERSION}
 ENV PATH=${JMETER_HOME}/bin:$PATH
 
-# Install required packages (wget, unzip)
+# Install required packages (wget, unzip, curl)
 RUN apt-get update && \
-    apt-get install -y wget unzip && \
+    apt-get install -y wget unzip curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Download and extract Apache JMeter
@@ -21,3 +21,4 @@ WORKDIR ${JMETER_HOME}
 
 # Default command: run JMeter in non-GUI mode
 CMD ["jmeter", "-n"]
+
