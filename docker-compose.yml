@@ -104,6 +104,8 @@ services:
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
+    networks:
+      - loadtest-net
   
 volumes:
   sonarqube_conf:
