@@ -8,6 +8,10 @@ services:
     container_name: FastApi-app-knw
     ports:
       - "8000:8000"
+    depends_on:
+      - loki
+    environment:
+      - LOKI_ENDPOINT=http://loki:3100/loki/api/v1/push
 
   sonarqube:
       image: sonarqube:latest
@@ -83,6 +87,12 @@ services:
       - /jmeter/report
     networks:
       - loadtest-net
+  
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
   
 volumes:
   sonarqube_conf:
