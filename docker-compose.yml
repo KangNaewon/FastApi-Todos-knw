@@ -85,8 +85,6 @@ services:
       - -e
       - -o
       - /jmeter/report
-    networks:
-      - loadtest-net
   
   loki:
     image: grafana/loki:latest
