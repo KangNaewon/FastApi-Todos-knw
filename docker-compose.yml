@@ -93,6 +93,17 @@ services:
       - "3100:3100"
     networks:
       - loadtest-net
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
   
 volumes:
   sonarqube_conf:
@@ -104,4 +115,3 @@ volumes:
 networks:
   loadtest-net:
     driver: bridge
-    
